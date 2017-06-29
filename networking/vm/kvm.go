@@ -237,7 +237,7 @@ func bridgeByName(name string) (*netlink.Bridge, error) {
 	return br, nil
 }
 
-func ensureBridgeIsUp(brName string, mtu int) (*netlink.Bridge, error) {
+func EnsureBridgeIsUp(brName string, mtu int) (*netlink.Bridge, error) {
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: brName,
@@ -517,7 +517,7 @@ func KvmAddNetwork(n *networking.Networking, anet *networking.ActiveNet) error {
 		}
 		enableIpmasq = config.IPMasq
 
-		br, err := ensureBridgeIsUp(config.BrName, config.MTU)
+		br, err := EnsureBridgeIsUp(config.BrName, config.MTU)
 		if err != nil {
 			return errwrap.Wrap(errors.New("error in time of bridge setup"), err)
 		}
