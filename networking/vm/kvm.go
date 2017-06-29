@@ -445,6 +445,56 @@ func kvmTransformFlannelNetwork(anet *networking.ActiveNet) error {
 	return nil
 }
 
+func XenSetup(n *networking.Networking, debug bool) {
+	n.CreateNS = false
+	n.AddNet = XenAddNetwork
+	n.DelNet = XenDelNetwork
+}
+
+func XenAddNetwork(n *networking.Networking, anet *networking.ActiveNet) error {
+	if anet.Conf.Type == "flannel" {
+		return errors.New("cannot transform flannel network into basic network")
+	}
+
+	anet.Runtime.IfName = "vif"
+	switch anet.Conf.Type {
+	case "ptp":
+		err := ExecNetIPAM(n, anet, "vif")
+		if err != nil {
+			return err
+		}
+
+	case "bridge":
+		config := BridgeNetConf{
+			BrName: "rkt0",
+			MTU:    1500,
+		}
+		if err := json.Unmarshal(anet.ConfBytes, &config); err != nil {
+			return errwrap.Wrap(fmt.Errorf("error parsing %q result", anet.Conf.Name), err)
+		}
+
+		_, err := EnsureBridgeIsUp(config.BrName, config.MTU)
+		if err != nil {
+			return errwrap.Wrap(errors.New("error in time of bridge setup"), err)
+		}
+
+		anet.Runtime.IfName = config.BrName
+		err2 := ExecNetIPAM(n, anet, anet.Runtime.IfName)
+		if err2 != nil {
+			return err2
+		}
+
+	default:
+		return fmt.Errorf("network %q have unsupported type: %q", anet.Conf.Name, anet.Conf.Type)
+	}
+
+	return nil
+}
+
+func XenDelNetwork(n *networking.Networking, an *networking.ActiveNet) error {
+	return nil
+}
+
 // kvmSetup prepare new Networking to be used in kvm environment based on tuntap pair interfaces
 // to allow communication with virtual machine created by lkvm tool
 func KvmSetup(n *networking.Networking, debug bool) {
